@@ -10,18 +10,25 @@ This project orchestrates the ingestion, transformation, and optimization of rel
 
 ## Architecture
 ![](Architecture.jpeg)
-1. The data platform transitions through an automated pipeline designed for incremental updates, minimal processing costs, and maximum query performance:
+
+The data platform transitions through an automated pipeline designed for incremental updates, minimal processing costs, and maximum query performance:
 Ingestion (Staging): Azure Data Factory securely copies transactional data from on-premises SQL Server instances and drops them as compressed Parquet files into a raw landing zone in ADLS Gen2.
 ![](ADF_pipeline.jpeg)
 
-3. Bronze Layer (Raw Replication): Databricks Auto Loader monitors cloud folders to discover new batches incrementally, appending raw entries seamlessly into schema-inferred Bronze Delta Tables.
+##### Bronze Layer (Raw Replication): 
+An ingestion pipeline was created to dynamically auto load all source data from the source containers as they drop to the bronze layer. Databricks Auto Loader monitors cloud folders to discover new batches incrementally, appending raw entries seamlessly into schema-inferred Bronze Parquet tables.  
 
-4. Silver Layer (Cleaning & Harmonization): Real-time Delta-to-Delta streaming cleanses corrupt records, resolves structural anomalies (e.g., malformed decimal strings), standardizes data types, and flattens transactional constraints.
+##### Silver Layer (Cleaning & Harmonization): 
+The silver layer houses all transformations done to the tables. This startes with batch streaming of data, cleaning, standardizing of data types, reformating of column names, flattening of transactional constraints and finally saving as a delta table using the MERGE strategy to handle upserts smoothly, preventing data duplication for downstream analytics
 
-5. Gold Layer (Analytical Star Schema): Structured dimension tables (e.g., flattened, multi-address customer profiles) and numerical fact tables are assembled via precise upsert (MERGE) operations.
+##### Gold Layer (Analytical Star Schema): 
+Gold layer serves as the final layer. Introduced denormalised tables by joining dim tables to produce flat tables ready for use downstream. To reconcile structural discrepancies within the AdventureWorks source data, total prices were re-calculated from sales detail rows. Finalized tables are then updated via idempotent multi-key Delta MERGE operations and Z-Ordered to guarantee fast, cost-efficient Synapse queries.
+
+##### Final Pipeline was setup for all layers to run in parallel 
 ![](Final_Sales_Pipeline.jpeg)
 
-6. Serving Layer: Azure Synapse Serverless SQL Pools expose the optimized Gold Delta files as relational views, serving sub-second, highly cost-efficient aggregations straight to Power BI.
+##### Serving Layer: 
+Azure Synapse Serverless SQL Pools expose the optimized Gold Delta files as relational views, serving sub-second, highly cost-efficient aggregations straight to Power BI.
 
 ## Getting Started - Setup
 
